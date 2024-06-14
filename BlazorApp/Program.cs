@@ -1,3 +1,4 @@
+using BlazorApp;
 using BlazorApp.Components;
 using MudBlazor;
 using MudBlazor.Services;
@@ -9,6 +10,12 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddMudServices(c => { c.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.BottomRight; });
+builder.Services.AddSignalR(options =>
+{
+    options.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
+    options.KeepAliveInterval = TimeSpan.FromSeconds(30);
+});
+builder.Services.AddSingleton<GroupManager>();
 
 var app = builder.Build();
 
@@ -20,6 +27,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseStaticFiles();
 app.UseAntiforgery();
+app.MapHub<NoiTuHub>("/noituhub");
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
