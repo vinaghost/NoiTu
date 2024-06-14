@@ -1,7 +1,64 @@
 ﻿@page "/"
+@using BlazorApp.Components.Models
 
 <PageTitle>Home</PageTitle>
 
-<h1>Hello, world!</h1>
+<MudGrid>
+    <MudItem xs="3">
+        <MudPaper Class="d-flex align-center justify-center mud-width-full py-8">
+            <MudStack>
+                <MudTextField @bind-Value="FirstPlayerText" Label="Người chơi 1" Variant="Variant.Outlined"></MudTextField>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="FirstSubmit">Nối</MudButton>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
 
-Welcome to your new app.
+    <MudItem xs="3">
+        <MudPaper Class="d-flex align-center justify-center mud-width-full py-8">
+            <MudForm>
+                <MudStack>
+                    <MudTextField @bind-Value="SecondPlayerText" Label="Người chơi 2" Variant="Variant.Outlined"></MudTextField>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SecondSubmit">Nối</MudButton>
+                </MudStack>
+            </MudForm>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="6">
+        <MudPaper Class="align-center justify-center mud-width-full py-8">
+            <MudList Clickable="true">
+                @foreach (var word in Words)
+				{
+                    var color = word.Id == 1 ? Color.Error : Color.Dark;
+                    <MudListItem @key=word Text="@word.Word" Value="@word" Avatar="@Icons.Material.Filled.AccountBox" IconColor="@color" />
+				}
+            </MudList>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    List<SubmitWord> Words = [];
+    string FirstPlayerText = "";
+    string SecondPlayerText = "";
+
+    void InsertNewWord(int id, string word)
+    {
+        Words.Insert(0, new(id, word));       
+        if (Words.Count > 20) Words.RemoveAt(Words.Count - 1);
+    }
+
+    void FirstSubmit()
+    {
+        InsertNewWord(1, FirstPlayerText);
+        FirstPlayerText = "";
+        InvokeAsync(StateHasChanged);
+    }    
+
+    void SecondSubmit()
+    {
+        InsertNewWord(2, SecondPlayerText);
+        SecondPlayerText = "";
+        InvokeAsync(StateHasChanged);
+    }
+}

@@ -1,6 +1,18 @@
 ﻿@inherits LayoutComponentBase
 
-@Body
+<MudThemeProvider />
+<MudDialogProvider @rendermode="InteractiveServer" />
+<MudSnackbarProvider @rendermode="InteractiveServer" />
+
+<MudLayout>
+    <MudAppBar>
+        Nối từ 
+    </MudAppBar>
+    <MudMainContent MaxWidth="MaxWidth.Medium" Style="padding: 5%;">
+        @Body
+    </MudMainContent>
+</MudLayout>
+
 
 <div id="blazor-error-ui">
     An unhandled error has occurred.
