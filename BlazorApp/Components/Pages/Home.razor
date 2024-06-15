@@ -1,64 +1,118 @@
 ﻿@page "/"
-@using BlazorApp.Models
 
-<PageTitle>Home</PageTitle>
+@implements IAsyncDisposable
 
-<MudGrid>
-    <MudItem xs="3">
-        <MudPaper Class="d-flex align-center justify-center mud-width-full py-8">
+@inject HubConnection HubConnection;
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject ILocalStorageService LocalStorage
+
+<PageTitle>Nối từ</PageTitle>
+
+@if (!IsJoined)
+{
+    <MudPaper Class="align-center justify-center mud-width-full pa-8">
+        <MudForm  @bind-IsValid="@IsSuccess">
             <MudStack>
-                <MudTextField @bind-Value="FirstPlayerText" Label="Người chơi 1" Variant="Variant.Outlined"></MudTextField>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="FirstSubmit">Nối</MudButton>
-            </MudStack>
-        </MudPaper>
-    </MudItem>
-
-    <MudItem xs="3">
-        <MudPaper Class="d-flex align-center justify-center mud-width-full py-8">
-            <MudForm>
-                <MudStack>
-                    <MudTextField @bind-Value="SecondPlayerText" Label="Người chơi 2" Variant="Variant.Outlined"></MudTextField>
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SecondSubmit">Nối</MudButton>
+                <MudText Typo="Typo.h5">Vào game</MudText>
+                <MudTextField @bind-Value="Username" Label="Tên hiển thị" Variant="Variant.Outlined" Required="true" RequiredError="Tên hiển thị không được để trống!" />
+                <MudStack Row="true">
+                    <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="CreateRoom" Disabled="@(!IsConnected)">Tạo phòng</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Surface" OnClick="JoinRoom" Disabled="@(!IsConnected)">Vào phòng</MudButton>
                 </MudStack>
-            </MudForm>
-        </MudPaper>
-    </MudItem>
-
-    <MudItem xs="6">
-        <MudPaper Class="align-center justify-center mud-width-full py-8">
-            <MudList Clickable="true">
-                @foreach (var word in Words)
-				{
-                    var color = word.Id == 1 ? Color.Error : Color.Dark;
-                    <MudListItem @key=word Text="@word.Word" Value="@word" Avatar="@Icons.Material.Filled.AccountBox" IconColor="@color" />
-				}
-            </MudList>
-        </MudPaper>
-    </MudItem>
-</MudGrid>
-
+            </MudStack>
+        </MudForm>
+    </MudPaper>
+}
+else
+{
+    <Playground GroupName="@GroupName"/>
+}
 @code {
-    List<SubmitWord> Words = [];
-    string FirstPlayerText = "";
-    string SecondPlayerText = "";
+    bool IsJoined = false;
+    string Username = "";
+    string GroupName = "hi";
 
-    void InsertNewWord(int id, string word)
+    bool IsSuccess;
+
+    protected override async Task OnInitializedAsync()
     {
-        Words.Insert(0, new(id, word));       
-        if (Words.Count > 20) Words.RemoveAt(Words.Count - 1);
+        HubConnection.On<string>("RoomJoined", (groupName) =>
+        {
+            IsJoined = true;
+            GroupName = groupName;
+            InvokeAsync(StateHasChanged);
+
+            Snackbar.Add($"Đã vào phòng {groupName}", Severity.Success);
+        });
+
+        HubConnection.On<string>("UserJoined", (userName) =>
+        {
+            Snackbar.Add($"{userName} đã vào phòng", Severity.Warning);
+        });
+
+        HubConnection.On<string>("RoomNotFound", (groupName) =>
+        {
+            Snackbar.Add($"{groupName} không tồn tại", Severity.Error);
+        });
+
+        HubConnection.On<string>("UserLeave", (userName) =>
+        {
+            Snackbar.Add($"{userName} đã rời phòng", Severity.Warning);
+        });
+
+        await HubConnection.StartAsync();
+        await InvokeAsync(StateHasChanged);
     }
 
-    void FirstSubmit()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        InsertNewWord(1, FirstPlayerText);
-        FirstPlayerText = "";
-        InvokeAsync(StateHasChanged);
-    }    
+        if (firstRender)
+        {
+            await LoadUsername();
+        }
 
-    void SecondSubmit()
+    }
+
+    async Task LoadUsername()
     {
-        InsertNewWord(2, SecondPlayerText);
-        SecondPlayerText = "";
-        InvokeAsync(StateHasChanged);
+        var name = await LocalStorage.GetItemAsync<string>("Username");
+        if (!string.IsNullOrEmpty(name))
+        {
+            Username = name;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    async Task CreateRoom()
+    {
+        if (!IsSuccess) return;
+        await HubConnection.SendAsync("CreateRoom", Username);
+        await LocalStorage.SetItemAsStringAsync("Username", Username);
+    }
+
+
+    async Task JoinRoom()
+    {
+        if (!IsSuccess) return;
+
+        var options = new DialogOptions { CloseOnEscapeKey = true };
+        var parameters = new DialogParameters<InputDialog> { 
+             { x => x.Title, "Mã phòng" },
+             { x => x.Callback, (roomCode) => HubConnection.SendAsync("JoinRoom", roomCode, Username) },
+        };
+
+        await DialogService.ShowAsync<InputDialog>("Nhập mã phòng", parameters,options );
+    }
+
+    public bool IsConnected =>
+        HubConnection?.State == HubConnectionState.Connected;
+
+    public async ValueTask DisposeAsync()
+    {
+        if (HubConnection is not null)
+        {
+            await HubConnection.DisposeAsync();
+        }
     }
 }

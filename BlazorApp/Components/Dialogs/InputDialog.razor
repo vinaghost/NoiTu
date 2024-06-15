@@ -1,0 +1,26 @@
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="Input" Label="@Title" Variant="Variant.Outlined"></MudTextField>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">Ok</MudButton>
+    </DialogActions>
+</MudDialog>
+@code {
+    [CascadingParameter] MudDialogInstance? MudDialog { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public Func<string,Task >? Callback { get; set; }
+
+    string Input = "";
+
+    async Task Submit() 
+    {
+        if (Callback is not null)
+        {
+            await Callback.Invoke(Input);
+        }
+        MudDialog?.Close(DialogResult.Ok(true));
+    }
+    void Cancel() => MudDialog?.Cancel();
+}

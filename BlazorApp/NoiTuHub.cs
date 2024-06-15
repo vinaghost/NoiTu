@@ -4,41 +4,50 @@ namespace BlazorApp
 {
     public interface INoiTuHub
     {
-        Task GroupCreated(string groupName);
+        Task RoomJoined(string groupName);
 
-        Task GroupJoined(string groupName);
+        Task RoomNotFound(string groupName);
 
-        Task GroupNotFound(string groupName);
+        Task UserJoined(string userName);
 
-        Task UserJoined(string groupName, string userName);
+        Task UserLeave(string userName);
     }
 
-    public class NoiTuHub(GroupManager groupManager) : Hub<INoiTuHub>
+    public class NoiTuHub(RoomManager roomManager) : Hub<INoiTuHub>
     {
-        private readonly GroupManager _groupManager = groupManager;
+        private readonly RoomManager _roomManager = roomManager;
 
-        public async Task CreateGroup(string username)
+        public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            var groupName = _groupManager.CreateGroup();
+            var (roomName, userName) = _roomManager.GetInfo(Context.ConnectionId);
+            if (string.IsNullOrEmpty(roomName)) return;
+            await Clients.GroupExcept(roomName, Context.ConnectionId).UserLeave(userName);
 
-            await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
-            _groupManager.JoinGroup(groupName, new(Context.ConnectionId, username));
-
-            await Clients.Caller.GroupCreated(groupName);
+            _roomManager.LeavelRoom(Context.ConnectionId);
         }
 
-        public async Task JoinGroup(string groupName, string username)
+        public async Task CreateRoom(string username)
         {
-            if (!_groupManager.IsGroupExists(groupName))
+            var groupName = _roomManager.CreateRoom();
+
+            await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
+            _roomManager.JoinRoom(groupName, new(Context.ConnectionId, username));
+
+            await Clients.Caller.RoomJoined(groupName);
+        }
+
+        public async Task JoinRoom(string roomName, string username)
+        {
+            if (!_roomManager.IsRoomExists(roomName))
             {
-                await Clients.Caller.GroupNotFound(groupName);
+                await Clients.Caller.RoomNotFound(roomName);
                 return;
             }
-            await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
-            _groupManager.JoinGroup(groupName, new(Context.ConnectionId, username));
+            await Groups.AddToGroupAsync(Context.ConnectionId, roomName);
+            _roomManager.JoinRoom(roomName, new(Context.ConnectionId, username));
 
-            await Clients.Caller.GroupJoined(groupName);
-            await Clients.GroupExcept(groupName, Context.ConnectionId).UserJoined(groupName, username);
+            await Clients.Caller.RoomJoined(roomName);
+            await Clients.GroupExcept(roomName, Context.ConnectionId).UserJoined(username);
         }
     }
 }
