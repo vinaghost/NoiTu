@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
-namespace BlazorApp
+namespace BlazorApp.Services
 {
     public class StartUpService(IDbContextFactory<AppDbContext> contextFactory) : IHostedService
     {

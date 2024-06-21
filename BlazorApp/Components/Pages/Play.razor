@@ -1,0 +1,110 @@
+﻿@page "/play"
+@page "/play/{RoomCode}"
+
+@inject HubConnection HubConnection
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject ILocalStorageService LocalStorage
+@inject NavigationManager NavigationManager
+@inject RoomManager RoomManager
+
+<PageTitle>Nối từ - @RoomCode</PageTitle>
+
+<MudGrid>
+    <MudItem xs="12">
+        <RoomCode Code="@RoomCode"/>
+    </MudItem>
+    <MudItem xs="3">
+        <UserInput IsEnable="@IsEnableA" PlayerName="@UserA" RoomCode="@RoomCode" />
+    </MudItem>
+
+    <MudItem xs="3">
+        <UserInput IsEnable="@IsEnableB" PlayerName="@UserB" RoomCode="@RoomCode" />
+
+    </MudItem>
+
+    <MudItem xs="6">
+        
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter]
+    public string RoomCode { get; set; } = "";
+
+    public string UserA { get; set; } = "";
+    public string UserB { get; set; } = "";
+
+    public bool IsEnableA { get; set; } = false;
+    public bool IsEnableB { get; set; } = false;
+
+    public string Username { get; set; } = "";   
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!IsValidRoom())
+        {
+            ToHome();
+            return;
+        }
+
+        HubConnection.On<List<string>>("RoomJoined", (users) =>
+        {
+            switch(users.Count)
+            {
+                case 0: Snackbar.Add("Chờ người chơi khác vào phòng", Severity.Warning); break;
+                case 1: Snackbar.Add("Bắt đầu chơi", Severity.Success); break;
+                case 2: Snackbar.Add("Bạn đang quan sát phòng", Severity.Info); break;
+            }
+        });
+
+        HubConnection.On<string>("UserJoined", (userName) =>
+        {
+            Snackbar.Add($"{userName} đã vào phòng", Severity.Warning);
+        });
+
+        HubConnection.On<string>("UserLeave", (userName) =>
+        {
+            Snackbar.Add($"{userName} đã rời phòng", Severity.Warning);
+        });
+
+        await Task.CompletedTask;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var username = await LocalStorage.GetItemAsync<string>("Username");
+
+            if (string.IsNullOrEmpty(username))
+            {
+                ToHome();
+                return;
+            }
+
+            Username = username;
+            await HubConnection.StartAsync();
+            await HubConnection.SendAsync(nameof(NoiTuHub.JoinRoom), username);
+            await InvokeAsync(StateHasChanged);
+        }
+
+    }
+
+    private void ToHome()
+    {
+        NavigationManager.NavigateTo("/");
+    }
+
+    private bool IsValidRoom()
+    {
+        if (string.IsNullOrEmpty(RoomCode)) return false;
+        if (!RoomManager.IsRoomExists(RoomCode)) return false;
+        return true;
+    }
+
+    public bool IsConnected =>
+        HubConnection?.State == HubConnectionState.Connected;
+
+}

@@ -10,15 +10,15 @@
 @code {
     [CascadingParameter] MudDialogInstance? MudDialog { get; set; }
     [Parameter] public string? Title { get; set; }
-    [Parameter] public Func<string,Task >? Callback { get; set; }
+    [Parameter] public Action<string>? Callback { get; set; }
 
     string Input = "";
 
-    async Task Submit() 
+    void Submit() 
     {
         if (Callback is not null)
         {
-            await Callback.Invoke(Input);
+            Callback.Invoke(Input);
         }
         MudDialog?.Close(DialogResult.Ok(true));
     }

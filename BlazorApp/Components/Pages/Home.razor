@@ -1,69 +1,28 @@
 ﻿@page "/"
 
-@implements IAsyncDisposable
-
-@inject HubConnection HubConnection;
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @inject ILocalStorageService LocalStorage
+@inject RoomManager RoomManager
+@inject NavigationManager NavigationManager
 
 <PageTitle>Nối từ</PageTitle>
 
-@if (!IsJoined)
-{
-    <MudPaper Class="align-center justify-center mud-width-full pa-8">
-        <MudForm  @bind-IsValid="@IsSuccess">
-            <MudStack>
-                <MudText Typo="Typo.h5">Vào game</MudText>
-                <MudTextField @bind-Value="Username" Label="Tên hiển thị" Variant="Variant.Outlined" Required="true" RequiredError="Tên hiển thị không được để trống!" />
-                <MudStack Row="true">
-                    <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="CreateRoom" Disabled="@(!IsConnected)">Tạo phòng</MudButton>
-                    <MudButton Variant="Variant.Filled" Color="Color.Surface" OnClick="JoinRoom" Disabled="@(!IsConnected)">Vào phòng</MudButton>
-                </MudStack>
+<MudPaper Class="align-center justify-center mud-width-full pa-8">
+    <MudForm>
+        <MudStack>
+            <MudText Typo="Typo.h5">Vào game</MudText>
+            <MudTextField @bind-Value="Username" Label="Tên hiển thị" Variant="Variant.Outlined" Required="true" RequiredError="Tên hiển thị không được để trống!" />
+            <MudStack Row="true">
+                <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="CreateRoom">Tạo phòng</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Surface" OnClick="JoinRoom">Vào phòng</MudButton>
             </MudStack>
-        </MudForm>
-    </MudPaper>
-}
-else
-{
-    <Playground GroupName="@GroupName"/>
-}
+        </MudStack>
+    </MudForm>
+</MudPaper>
+
 @code {
-    bool IsJoined = false;
     string Username = "";
-    string GroupName = "hi";
-
-    bool IsSuccess;
-
-    protected override async Task OnInitializedAsync()
-    {
-        HubConnection.On<string>("RoomJoined", (groupName) =>
-        {
-            IsJoined = true;
-            GroupName = groupName;
-            InvokeAsync(StateHasChanged);
-
-            Snackbar.Add($"Đã vào phòng {groupName}", Severity.Success);
-        });
-
-        HubConnection.On<string>("UserJoined", (userName) =>
-        {
-            Snackbar.Add($"{userName} đã vào phòng", Severity.Warning);
-        });
-
-        HubConnection.On<string>("RoomNotFound", (groupName) =>
-        {
-            Snackbar.Add($"{groupName} không tồn tại", Severity.Error);
-        });
-
-        HubConnection.On<string>("UserLeave", (userName) =>
-        {
-            Snackbar.Add($"{userName} đã rời phòng", Severity.Warning);
-        });
-
-        await HubConnection.StartAsync();
-        await InvokeAsync(StateHasChanged);
-    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -86,33 +45,29 @@ else
 
     async Task CreateRoom()
     {
-        if (!IsSuccess) return;
-        await HubConnection.SendAsync("CreateRoom", Username);
         await LocalStorage.SetItemAsStringAsync("Username", Username);
-    }
+        var room = RoomManager.CreateRoom();
 
+        NavigationManager.NavigateTo($"/play/{room}");
+    }
 
     async Task JoinRoom()
     {
-        if (!IsSuccess) return;
-
         var options = new DialogOptions { CloseOnEscapeKey = true };
         var parameters = new DialogParameters<InputDialog> { 
-             { x => x.Title, "Mã phòng" },
-             { x => x.Callback, (roomCode) => HubConnection.SendAsync("JoinRoom", roomCode, Username) },
+            { x => x.Title, "Mã phòng" },
+            { x => x.Callback, (roomCode) => {
+                if (RoomManager.IsRoomExists(roomCode))
+                {
+                    NavigationManager.NavigateTo($"/play/{roomCode}");
+	            }
+	            else
+	            {
+		            Snackbar.Add($"{roomCode} không tồn tại", Severity.Error);
+                }
+            }},
         };
 
         await DialogService.ShowAsync<InputDialog>("Nhập mã phòng", parameters,options );
-    }
-
-    public bool IsConnected =>
-        HubConnection?.State == HubConnectionState.Connected;
-
-    public async ValueTask DisposeAsync()
-    {
-        if (HubConnection is not null)
-        {
-            await HubConnection.DisposeAsync();
-        }
     }
 }

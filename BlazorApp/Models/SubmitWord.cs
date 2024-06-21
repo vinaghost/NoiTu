@@ -1,4 +1,10 @@
 ﻿namespace BlazorApp.Models
 {
-    public record SubmitWord(int Id, string Word);
+    public record SubmitWord(string User, string Word)
+    {
+        public override string ToString()
+        {
+            return $"{User}: {Word}";
+        }
+    }
 }

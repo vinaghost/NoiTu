@@ -1,16 +1,17 @@
-﻿using Microsoft.AspNetCore.SignalR;
+﻿using BlazorApp.Services;
+using Microsoft.AspNetCore.SignalR;
 
 namespace BlazorApp
 {
     public interface INoiTuHub
     {
-        Task RoomJoined(string groupName);
-
-        Task RoomNotFound(string groupName);
+        Task RoomJoined(List<string> users);
 
         Task UserJoined(string userName);
 
         Task UserLeave(string userName);
+
+        Task UserInput(string username, string content);
     }
 
     public class NoiTuHub(RoomManager roomManager) : Hub<INoiTuHub>
@@ -19,35 +20,27 @@ namespace BlazorApp
 
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            var (roomName, userName) = _roomManager.GetInfo(Context.ConnectionId);
-            if (string.IsNullOrEmpty(roomName)) return;
-            await Clients.GroupExcept(roomName, Context.ConnectionId).UserLeave(userName);
+            var member = _roomManager.GetMember(Context.ConnectionId);
+            if (member is null) return;
+            await Clients.GroupExcept(member.RoomName, Context.ConnectionId).UserLeave(member.UserName);
 
-            _roomManager.LeavelRoom(Context.ConnectionId);
-        }
-
-        public async Task CreateRoom(string username)
-        {
-            var groupName = _roomManager.CreateRoom();
-
-            await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
-            _roomManager.JoinRoom(groupName, new(Context.ConnectionId, username));
-
-            await Clients.Caller.RoomJoined(groupName);
+            _roomManager.LeaveRoom(Context.ConnectionId);
         }
 
         public async Task JoinRoom(string roomName, string username)
         {
-            if (!_roomManager.IsRoomExists(roomName))
-            {
-                await Clients.Caller.RoomNotFound(roomName);
-                return;
-            }
             await Groups.AddToGroupAsync(Context.ConnectionId, roomName);
-            _roomManager.JoinRoom(roomName, new(Context.ConnectionId, username));
 
-            await Clients.Caller.RoomJoined(roomName);
             await Clients.GroupExcept(roomName, Context.ConnectionId).UserJoined(username);
+
+            await Clients.Caller.RoomJoined(_roomManager.GetRoomMembers(roomName).Select(x => x.Username).ToList());
+
+            _roomManager.JoinRoom(roomName, new(Context.ConnectionId, username));
+        }
+
+        public async Task Submit(string roomName, string username, string content)
+        {
+            await Clients.Group(roomName).UserInput(username, content);
         }
     }
 }

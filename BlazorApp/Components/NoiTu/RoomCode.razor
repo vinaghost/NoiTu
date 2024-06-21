@@ -1,0 +1,49 @@
+﻿@inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
+@inject HubConnection HubConnection;
+
+<MudPaper Class="d-flex align-center justify-center mud-width-full pa-2 my-2" >
+    <MudStack>
+        <MudText Typo="Typo.h5">Mã phòng</MudText>
+        <MudStack Row="true">
+            <MudTextField @bind-Value="Code" ReadOnly="true" Variant="Variant.Outlined" InputType="@CodeInputType" Adornment="Adornment.End" AdornmentIcon="@RoomCodeIcon" OnAdornmentClick="DisplayRoomCode" AdornmentAriaLabel="Hiện mã phòng" />
+            <MudButton Variant="Variant.Filled" Color="Color.Info" OnClick="CopyToClipboard" StartIcon="@Icons.Material.Filled.ContentCopy">Sao chép mã phòng</MudButton>
+        </MudStack>
+        <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="LeaveRoom" StartIcon="@Icons.Material.Filled.ExitToApp">Rời phòng</MudButton>
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter] public string? Code { get; set; }
+
+    bool IsShow;
+    InputType CodeInputType = InputType.Password;
+    string RoomCodeIcon = Icons.Material.Filled.VisibilityOff;
+
+    void DisplayRoomCode()
+    {
+        if (IsShow)
+        {
+            IsShow = false;
+            RoomCodeIcon = Icons.Material.Filled.VisibilityOff;
+            CodeInputType = InputType.Password;
+        }
+        else
+        {
+            IsShow = true;
+            RoomCodeIcon = Icons.Material.Filled.Visibility;
+            CodeInputType = InputType.Text;
+        }
+    }
+
+    void CopyToClipboard()
+    {
+        JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", Code);
+        Snackbar.Add("Đã sao chép mã phòng", Severity.Success);
+    }
+
+    async Task LeaveRoom()
+    {
+        await HubConnection.SendAsync("LeaveRoom", Code, "a" );
+    }
+}

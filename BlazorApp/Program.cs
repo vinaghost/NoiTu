@@ -1,5 +1,6 @@
 using BlazorApp;
 using BlazorApp.Components;
+using BlazorApp.Services;
 using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -26,8 +27,8 @@ builder.Services.AddDbContextFactory<AppDbContext>(options =>
 builder.Services.AddMudServices(c => { c.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.TopLeft; });
 builder.Services.AddSignalR(options =>
 {
-    options.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
-    options.KeepAliveInterval = TimeSpan.FromSeconds(30);
+    options.ClientTimeoutInterval = TimeSpan.FromSeconds(4);
+    options.KeepAliveInterval = TimeSpan.FromSeconds(2);
 });
 builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddHostedService<StartUpService>();

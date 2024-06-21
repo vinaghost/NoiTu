@@ -1,8 +1,8 @@
-﻿using BlazorApp.DTO;
+﻿using BlazorApp.Dto;
 using BlazorApp.Enitites;
 using Microsoft.EntityFrameworkCore;
 
-namespace BlazorApp
+namespace BlazorApp.Services
 {
     public class RoomManager(IDbContextFactory<AppDbContext> contextFactory)
     {
@@ -15,7 +15,6 @@ namespace BlazorApp
             using var context = _contextFactory.CreateDbContext();
             context.Rooms.Add(new Room { Name = roomName });
             context.SaveChanges();
-
             return roomName;
         }
 
@@ -25,52 +24,45 @@ namespace BlazorApp
             var room = context.Rooms.FirstOrDefault(x => x.Name == roomName);
             if (room is null) return;
 
-            var userEntity = user.ToEntity();
-            context.Users.Add(userEntity);
-            context.SaveChanges();
-            context.Add(new Member { RoomId = room.Id, UserId = userEntity.Id });
+            context.Add(new Member { RoomId = room.Id, Username = user.Username, ConnectionId = user.ConnectionId });
             context.SaveChanges();
         }
 
-        public void LeavelRoom(string connectionId)
+        public void LeaveRoom(string connectionId)
         {
             using var context = _contextFactory.CreateDbContext();
-
-            var user = context.Users.FirstOrDefault(x => x.ConnectionId == connectionId);
-            if (user is null) return;
-
             context.Members
-                .Where(x => x.UserId == user.Id)
+                .Where(x => x.ConnectionId == connectionId)
                 .ExecuteDelete();
         }
 
-        public (string, string) GetInfo(string connectionId)
+        public MemberDto? GetMember(string connectionId)
         {
             using var context = _contextFactory.CreateDbContext();
-
-            var user = context.Users.FirstOrDefault(x => x.ConnectionId == connectionId);
-            if (user is null) return ("", "");
-
-            var room = context.Members
-                .Where(x => x.UserId == user.Id)
-                .Select(x => x.Room)
+            var member = context.Members
+                .Where(x => x.ConnectionId == connectionId)
+                .Select(x => new { x.ConnectionId, x.Username })
                 .FirstOrDefault();
-
-            return (room?.Name ?? "", user.Name);
+            return member is null ? null : new MemberDto(member.ConnectionId, member.Username);
         }
 
         public List<UserDto> GetRoomMembers(string roomName)
         {
             using var context = _contextFactory.CreateDbContext();
-            var room = context.Rooms.FirstOrDefault(x => x.Name == roomName);
-            if (room is null) return [];
+            var room = context.Rooms
+                .Where(x => x.Name == roomName)
+                .Select(x => x.Id)
+                .FirstOrDefault();
+            if (room == default) return [];
 
             var users = context.Members
-                .Where(x => x.RoomId == room.Id)
-                .Select(x => x.User)
+                .Where(x => x.RoomId == room)
+                .Select(x => new { x.ConnectionId, x.Username })
+                .AsEnumerable()
+                .Select(x => new UserDto(x.ConnectionId, x.Username))
                 .ToList();
 
-            return users.Where(x => x is not null).Select(x => x!.ToDto()).ToList();
+            return users;
         }
 
         public bool IsRoomExists(string roomName)
