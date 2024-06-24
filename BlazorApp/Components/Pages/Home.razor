@@ -2,6 +2,7 @@
 
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject ISessionStorageService SessionStorage
 @inject ILocalStorageService LocalStorage
 @inject RoomManager RoomManager
 @inject NavigationManager NavigationManager
@@ -45,10 +46,8 @@
 
     async Task CreateRoom()
     {
-        await LocalStorage.SetItemAsStringAsync("Username", Username);
-        var room = RoomManager.CreateRoom();
-
-        NavigationManager.NavigateTo($"/play/{room}");
+        var roomCode = RoomManager.CreateRoom();
+        await ToGame(roomCode);
     }
 
     async Task JoinRoom()
@@ -56,10 +55,14 @@
         var options = new DialogOptions { CloseOnEscapeKey = true };
         var parameters = new DialogParameters<InputDialog> { 
             { x => x.Title, "Mã phòng" },
-            { x => x.Callback, (roomCode) => {
+            { x => x.Callback, async (roomCode) => {
+                if (string.IsNullOrEmpty(roomCode))
+				{
+                    return;
+                }
                 if (RoomManager.IsRoomExists(roomCode))
                 {
-                    NavigationManager.NavigateTo($"/play/{roomCode}");
+                    await ToGame(roomCode);
 	            }
 	            else
 	            {
@@ -69,5 +72,12 @@
         };
 
         await DialogService.ShowAsync<InputDialog>("Nhập mã phòng", parameters,options );
+    }
+
+    private async Task ToGame(string roomCode)
+    {
+        await LocalStorage.SetItemAsStringAsync("Username", Username);
+		await SessionStorage.SetItemAsStringAsync("Username", Username);
+		NavigationManager.NavigateTo($"/play/{roomCode}");
     }
 }

@@ -33,9 +33,18 @@ namespace BlazorApp
 
             await Clients.GroupExcept(roomName, Context.ConnectionId).UserJoined(username);
 
-            await Clients.Caller.RoomJoined(_roomManager.GetRoomMembers(roomName).Select(x => x.Username).ToList());
-
             _roomManager.JoinRoom(roomName, new(Context.ConnectionId, username));
+
+            await Clients.Caller.RoomJoined(_roomManager.GetRoomMembers(roomName).Select(x => x.Username).ToList());
+        }
+
+        public async Task LeaveRoom(string roomName, string username)
+        {
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomName);
+
+            await Clients.GroupExcept(roomName, Context.ConnectionId).UserLeave(username);
+
+            _roomManager.LeaveRoom(Context.ConnectionId);
         }
 
         public async Task Submit(string roomName, string username, string content)

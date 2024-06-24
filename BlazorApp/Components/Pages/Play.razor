@@ -4,7 +4,7 @@
 @inject HubConnection HubConnection
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
-@inject ILocalStorageService LocalStorage
+@inject ISessionStorageService SessionStorage
 @inject NavigationManager NavigationManager
 @inject RoomManager RoomManager
 
@@ -12,19 +12,19 @@
 
 <MudGrid>
     <MudItem xs="12">
-        <RoomCode Code="@RoomCode"/>
+        <RoomCode Code="@RoomCode" Username="@Username"/>
     </MudItem>
     <MudItem xs="3">
-        <UserInput IsEnable="@IsEnableA" PlayerName="@UserA" RoomCode="@RoomCode" />
+        <UserInput User="@UserA" RoomCode="@RoomCode" />
     </MudItem>
 
     <MudItem xs="3">
-        <UserInput IsEnable="@IsEnableB" PlayerName="@UserB" RoomCode="@RoomCode" />
+        <UserInput User="@UserB" RoomCode="@RoomCode" />
 
     </MudItem>
 
     <MudItem xs="6">
-        
+        <WordsList/>
     </MudItem>
 </MudGrid>
 
@@ -32,14 +32,12 @@
     [Parameter]
     public string RoomCode { get; set; } = "";
 
-    public string UserA { get; set; } = "";
-    public string UserB { get; set; } = "";
+    public User UserA { get; set; } = new();
+    public User UserB { get; set; } = new();
 
-    public bool IsEnableA { get; set; } = false;
-    public bool IsEnableB { get; set; } = false;
+    public string Username { get; set; } = "";
 
-    public string Username { get; set; } = "";   
-
+    List<string> Users = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -51,22 +49,41 @@
 
         HubConnection.On<List<string>>("RoomJoined", (users) =>
         {
+            Users.Clear();
+            Users.AddRange(users);
+
             switch(users.Count)
             {
-                case 0: Snackbar.Add("Chờ người chơi khác vào phòng", Severity.Warning); break;
-                case 1: Snackbar.Add("Bắt đầu chơi", Severity.Success); break;
-                case 2: Snackbar.Add("Bạn đang quan sát phòng", Severity.Info); break;
+                case 1: EmptyRoomHandler(); break;
+                case 2: ReadyRoomHandler(); break;
+                default: FullRoomHandler(); break;
             }
         });
 
         HubConnection.On<string>("UserJoined", (userName) =>
         {
             Snackbar.Add($"{userName} đã vào phòng", Severity.Warning);
+            Users.Add(userName);
+
+            switch (Users.Count)
+            {
+                case 0: EmptyRoomHandler(); break;
+                case 1: ReadyRoomHandler(); break;
+                case 2: FullRoomHandler(); break;
+            }
         });
 
         HubConnection.On<string>("UserLeave", (userName) =>
         {
             Snackbar.Add($"{userName} đã rời phòng", Severity.Warning);
+            Users.Remove(userName);
+
+            switch (Users.Count)
+            {
+                case 0: EmptyRoomHandler(); break;
+                case 1: ReadyRoomHandler(); break;
+                case 2: FullRoomHandler(); break;
+            }
         });
 
         await Task.CompletedTask;
@@ -76,7 +93,7 @@
     {
         if (firstRender)
         {
-            var username = await LocalStorage.GetItemAsync<string>("Username");
+            var username = await SessionStorage.GetItemAsync<string>("Username");
 
             if (string.IsNullOrEmpty(username))
             {
@@ -85,8 +102,11 @@
             }
 
             Username = username;
-            await HubConnection.StartAsync();
-            await HubConnection.SendAsync(nameof(NoiTuHub.JoinRoom), username);
+            if (HubConnection.State == HubConnectionState.Disconnected)
+            {
+                await HubConnection.StartAsync();
+            }
+            await HubConnection.SendAsync("JoinRoom", RoomCode, username);
             await InvokeAsync(StateHasChanged);
         }
 
@@ -104,7 +124,31 @@
         return true;
     }
 
-    public bool IsConnected =>
-        HubConnection?.State == HubConnectionState.Connected;
+    private void EmptyRoomHandler()
+    {
+        Snackbar.Add("Chờ người chơi khác vào phòng", Severity.Info);
+        UserA.Set(Users[0], true);
+        UserB.Reset();
+    }
+
+
+    private void ReadyRoomHandler()
+    {
+        Snackbar.Add("Bắt đầu chơi", Severity.Success);
+
+        UserA.Set(Users[0], Users[0] == Username);
+        UserB.Set(Users[1], Users[1] == Username);
+
+    }
+
+    private void FullRoomHandler()
+    {
+        Snackbar.Add("Phòng đã đầy nhưng bạn có thể quan sát", Severity.Info);
+
+        UserA.Set(Users[0], Users[0] == Username);
+        UserB.Set(Users[1], Users[1] == Username);
+
+    }
+
 
 }

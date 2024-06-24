@@ -1,6 +1,7 @@
 ﻿@inject ISnackbar Snackbar
 @inject IJSRuntime JSRuntime
 @inject HubConnection HubConnection;
+@inject NavigationManager NavigationManager
 
 <MudPaper Class="d-flex align-center justify-center mud-width-full pa-2 my-2" >
     <MudStack>
@@ -15,6 +16,7 @@
 
 @code {
     [Parameter] public string? Code { get; set; }
+    [Parameter] public string? Username { get; set; }
 
     bool IsShow;
     InputType CodeInputType = InputType.Password;
@@ -44,6 +46,7 @@
 
     async Task LeaveRoom()
     {
-        await HubConnection.SendAsync("LeaveRoom", Code, "a" );
+        await HubConnection.SendAsync("LeaveRoom", Code, Username);
+        NavigationManager.NavigateTo("/");
     }
 }

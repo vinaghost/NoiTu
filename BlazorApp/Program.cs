@@ -2,6 +2,7 @@ using BlazorApp;
 using BlazorApp.Components;
 using BlazorApp.Services;
 using Blazored.LocalStorage;
+using Blazored.SessionStorage;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.EntityFrameworkCore;
@@ -31,6 +32,7 @@ builder.Services.AddSignalR(options =>
     options.KeepAliveInterval = TimeSpan.FromSeconds(2);
 });
 builder.Services.AddBlazoredLocalStorage();
+builder.Services.AddBlazoredSessionStorage();
 builder.Services.AddHostedService<StartUpService>();
 builder.Services.AddSingleton<RoomManager>();
 builder.Services.AddScoped(sp =>

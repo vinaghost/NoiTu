@@ -12,6 +12,8 @@ namespace BlazorApp.Enitites
         public required string ConnectionId { get; set; }
         public required string Username { get; set; }
         public required int RoomId { get; set; }
+        public required DateTime JoinTime { get; set; }
+
         public Room? Room { get; set; }
     }
 }

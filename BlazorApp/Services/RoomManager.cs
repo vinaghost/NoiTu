@@ -24,7 +24,7 @@ namespace BlazorApp.Services
             var room = context.Rooms.FirstOrDefault(x => x.Name == roomName);
             if (room is null) return;
 
-            context.Add(new Member { RoomId = room.Id, Username = user.Username, ConnectionId = user.ConnectionId });
+            context.Add(new Member { RoomId = room.Id, Username = user.Username, ConnectionId = user.ConnectionId, JoinTime = DateTime.Now });
             context.SaveChanges();
         }
 
@@ -57,6 +57,7 @@ namespace BlazorApp.Services
 
             var users = context.Members
                 .Where(x => x.RoomId == room)
+                .OrderBy(x => x.JoinTime)
                 .Select(x => new { x.ConnectionId, x.Username })
                 .AsEnumerable()
                 .Select(x => new UserDto(x.ConnectionId, x.Username))
