@@ -43,6 +43,7 @@ builder.Services.AddScoped(sp =>
         .WithAutomaticReconnect()
         .Build();
 });
+builder.Services.AddHttpClient();
 
 var app = builder.Build();
 
