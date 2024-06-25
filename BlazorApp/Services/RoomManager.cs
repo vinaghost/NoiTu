@@ -24,7 +24,19 @@ namespace BlazorApp.Services
             var room = context.Rooms.FirstOrDefault(x => x.Name == roomName);
             if (room is null) return;
 
-            context.Add(new Member { RoomId = room.Id, Username = user.Username, ConnectionId = user.ConnectionId, JoinTime = DateTime.Now });
+            var member = context.Members.FirstOrDefault(x => x.Username == user.Username);
+            if (member != null)
+            {
+                member.RoomId = room.Id;
+                member.JoinTime = DateTime.Now;
+                member.ConnectionId = user.ConnectionId;
+                context.Update(member);
+            }
+            else
+            {
+                context.Add(new Member { RoomId = room.Id, Username = user.Username, ConnectionId = user.ConnectionId, JoinTime = DateTime.Now });
+            }
+
             context.SaveChanges();
         }
 
