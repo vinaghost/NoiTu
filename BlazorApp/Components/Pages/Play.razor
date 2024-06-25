@@ -67,9 +67,9 @@
 
             switch (Users.Count)
             {
-                case 0: EmptyRoomHandler(); break;
-                case 1: ReadyRoomHandler(); break;
-                case 2: FullRoomHandler(); break;
+                case 0: EmptyRoomHandler(false); break;
+                case 1: ReadyRoomHandler(false); break;
+                case 2: FullRoomHandler(false); break;
             }
         });
 
@@ -80,9 +80,9 @@
 
             switch (Users.Count)
             {
-                case 0: EmptyRoomHandler(); break;
-                case 1: ReadyRoomHandler(); break;
-                case 2: FullRoomHandler(); break;
+                case 0: EmptyRoomHandler(false); break;
+                case 1: ReadyRoomHandler(false); break;
+                case 2: FullRoomHandler(false); break;
             }
         });
 
@@ -124,27 +124,34 @@
         return true;
     }
 
-    private void EmptyRoomHandler()
+    private void EmptyRoomHandler(bool enableNotification = true)
     {
-        Snackbar.Add("Chờ người chơi khác vào phòng", Severity.Info);
+        if (enableNotification)
+        {
+            Snackbar.Add("Chờ người chơi khác vào phòng", Severity.Info);
+        }
         UserA.Set(Users[0], true);
         UserB.Reset();
     }
 
 
-    private void ReadyRoomHandler()
+    private void ReadyRoomHandler(bool enableNotification = true)
     {
-        Snackbar.Add("Bắt đầu chơi", Severity.Success);
-
+        if (enableNotification)
+        {
+            Snackbar.Add("Bắt đầu chơi", Severity.Success);
+        }
         UserA.Set(Users[0], Users[0] == Username);
         UserB.Set(Users[1], Users[1] == Username);
 
     }
 
-    private void FullRoomHandler()
+    private void FullRoomHandler(bool enableNotification = true)
     {
-        Snackbar.Add("Phòng đã đầy nhưng bạn có thể quan sát", Severity.Info);
-
+        if (enableNotification)
+        {
+            Snackbar.Add("Phòng đã đầy nhưng bạn có thể quan sát", Severity.Info);
+        }
         UserA.Set(Users[0], Users[0] == Username);
         UserB.Set(Users[1], Users[1] == Username);
 

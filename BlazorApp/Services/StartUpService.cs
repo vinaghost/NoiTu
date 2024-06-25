@@ -9,13 +9,13 @@ namespace BlazorApp.Services
         public async Task StartAsync(CancellationToken cancellationToken)
         {
             using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
-            await context.Database.EnsureDeletedAsync(cancellationToken);
             await context.Database.EnsureCreatedAsync(cancellationToken);
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
-            await Task.CompletedTask;
+            using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            await context.Database.EnsureDeletedAsync(cancellationToken);
         }
     }
 }
